@@ -1,0 +1,5 @@
+(sym_lib_table
+  (lib (name "Seeduino")(type "Legacy")(uri "/home/gector/Downloads/Seeeduino XIAO KICAD/Seeeduino XIAO.lib")(options "")(descr ""))
+  (lib (name "gen_lib")(type "Legacy")(uri "/home/gector/projects/KiCad/nhz_gen_lib/general_parts.lib")(options "")(descr ""))
+  (lib (name "zackGen")(type "KiCad")(uri "/home/gector/projects/KiCad/ZackGeneralParts.kicad_sym")(options "")(descr ""))
+)
