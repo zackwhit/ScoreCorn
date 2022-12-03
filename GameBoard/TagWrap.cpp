@@ -1,14 +1,11 @@
+#include "DW1000Ng.hpp"
 #include "TagWrap.hpp"
+
 
 // Task scheduler variables
 StatusRequest sr;
 
-void test_callback();
-
 Task *tagWatchdog;
-Task *testTask;
-
-uint8_t knownAnchorIds[8];
 
 // timestamps to remember
 uint64_t timePollSent;
@@ -38,7 +35,8 @@ device_configuration_t DEFAULT_CONFIG = {
     false,
     SFDMode::STANDARD_SFD,
     Channel::CHANNEL_5,
-    DataRate::RATE_850KBPS,
+    //DataRate::RATE_850KBPS,
+    DataRate::RATE_6800KBPS,
     PulseFrequency::FREQ_16MHZ,
     PreambleLength::LEN_256,
     PreambleCode::CODE_3
@@ -56,7 +54,6 @@ interrupt_configuration_t DEFAULT_INTERRUPT_CONFIG = {
 namespace DW = DW1000Ng;
 
 void TagInit() {
-
   DW::initialize(PIN_SS, PIN_IRQ, PIN_RST);
   DW::applyConfiguration(DEFAULT_CONFIG);
   DW::applyInterruptConfiguration(DEFAULT_INTERRUPT_CONFIG);
@@ -69,15 +66,14 @@ void TagInit() {
 
   // Check SPI communication
   // get device ID register and check it matches expected value
-  if (DW::checkDeviceId()){
-    Serial.println("SPI seems to work");
-    tagInitialized = true;
-  } else {
-    Serial.println("SPI error - unable to talk to DW1000");
-    tagInitialized = false;
-  }
+  //if (DW::checkDeviceId()){
+  //  Serial.println("SPI seems to work");
+  //  tagInitialized = true;
+  //} else {
+  //  Serial.println("SPI error - unable to talk to DW1000");
+  //  tagInitialized = false;
+  //}
 
-  testTask = new Task(10000, TASK_FOREVER, &test_callback, &ts, true);
   tagWatchdog = new Task(&tagWatchdogCallback, &ts);
 
   // Pair with anchors
@@ -87,18 +83,15 @@ void TagInit() {
   // Range to first anchor, delay, and then send to next
   // Restart after reaching last anchor
 
-  Serial.print("Address of ts: "); Serial.println((uint32_t)&ts, HEX);
 }
 
-void TagLoop(){
+int TagLoop(){
 
   // Check for timeout & reset if so
   if (sr.getStatus() == TASK_SR_TIMEOUT && nextExpectedMsg != 10) {
-    Serial.println("Experienced timeout");
+    //Serial.println("Experienced timeout");
     nextExpectedMsg = 10;
     DW::forceTRxOff();
-  } else if (sr.getStatus() < 0) {
-    //Serial.println("Bad status");
   }
 
 
@@ -112,31 +105,78 @@ void TagLoop(){
     // Handle POLL_ACK - send range
     if (nextExpectedMsg == msgId) {
       if (msgId == POLL_ACK) {
-        Serial.println("Got poll ACK");
+        //Serial.println("Got poll ACK");
         timePollSent = DW::getTransmitTimestamp();
         timePollAckReceived = DW::getReceiveTimestamp();
         TagTransmitRange();
       } else if (msgId == RANGE_REPORT) {
-        Serial.print("Got Range Report: ");
-        //double curRange = 0;
+        Serial.print("R:");
+        uint8_t devAddr = data[5];
+        Serial.print(devAddr);
+        Serial.print(":");
         uint16_t curRange = 0;
         memcpy(&curRange, data + 1, 2);
         double printableRange = (double)(curRange/1000.0);
-        Serial.print(printableRange); Serial.println("m");
+        Serial.print(printableRange); Serial.println(":");
         nextExpectedMsg = 10; // undefined msg id
         sr.signalComplete();
+      } else if (msgId == PAIR_ACK) {
+        Serial.println("Got pair ACK");
+        sr.signalComplete();
+        DW::startReceive();
+        return data[5]+1;
+      } else {
+        Serial.println("Unexpected expected error?");
       }
     } else {
       Serial.println("unexpected message");
     }
   }
+
+  return 0; // Normal return
+}
+
+void TagTransmitPair() {
+  nextExpectedMsg = PAIR_ACK;
+  //Serial.println("Sending PAIR message");
+  data[0] = PAIR;
+
+  DW::setTransmitData(data, LEN_DATA);
+  DW::startTransmit();
+  
+  // TODO:
+  // - Add code to the loop to handle responses   
+  // (if msgId == PAIR_ACK) ^
+
+  // Timeout stuff?
+  sr.setWaiting();
+  sr.setTimeout(1200);
+  tagWatchdog->waitFor(&sr);
+}
+
+void TagTransmitPairAll() {
+  nextExpectedMsg = PAIR_ACK;
+  //Serial.println("Sending PAIR message");
+  data[0] = PAIR_ALL;
+
+  DW::setTransmitData(data, LEN_DATA);
+  DW::startTransmit();
+  
+  // TODO:
+  // - Add code to the loop to handle responses   
+  // (if msgId == PAIR_ACK) ^
+
+  // Timeout stuff?
+  sr.setWaiting();
+  sr.setTimeout(1200);
+  tagWatchdog->waitFor(&sr);
 }
 
 void TagTransmitPoll(uint8_t destAddr) {
   if (nextExpectedMsg == POLL_ACK)
     return;
   nextExpectedMsg = POLL_ACK;
-  Serial.println("Sending poll message");
+  //Serial.println("Sending poll message");
 
   data[0] = POLL;
   data[5] = destAddr;
@@ -159,7 +199,7 @@ void TagTransmitPoll(uint8_t destAddr) {
 void TagTransmitRange() {
   nextExpectedMsg = RANGE_REPORT;
   sr.resetTimeout();
-  Serial.println("Sending range message");
+  //Serial.println("Sending range message");
 
   data[0] = RANGE;
 
@@ -186,7 +226,7 @@ void TagReceiveHandler(){
 }
 
 void TagSentHandler(){
-  Serial.println("Done transmitting");
+  //Serial.println("Done transmitting");
 
   //if (data[0] == POLL_ACK) {
   //  timePollAckSent = DW::getTransmitTimestamp();
@@ -196,10 +236,6 @@ void TagSentHandler(){
 }
 
 void tagWatchdogCallback() {
-  //Serial.println("Watchdog fired");
+  //Serial.println("got timeout");
   return;
-}
-
-void test_callback() {
-  Serial.println("test callback worked");
 }

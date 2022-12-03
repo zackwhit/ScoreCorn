@@ -1,10 +1,13 @@
+#pragma once
+
 #include <DW1000Ng.hpp>
 #include <DW1000NgUtils.hpp>
 #include <DW1000NgRanging.hpp>
 
-#define _TASK_STATUS_REQUEST
-#define _TASK_TIMEOUT
-#include <TaskSchedulerDeclarations.h>
+#include "globalTasks.h"
+
+// "Do Serial" - debug switch
+#define DS false
 
 // connection pins -
 #ifdef SEEED_XIAO_M0
@@ -24,7 +27,10 @@ const uint8_t PIN_IRQ = 2; // irq pin
 const uint8_t PIN_SS =  SS; // spi select pin
 #endif
 
+
 const uint8_t devAddr = 0x01;
+const uint16_t devPairDelay = 100*devAddr+50; //ms to wait before replying to PAIR
+const uint16_t deviceRetryTimeout = 500;
 
 // messages used in the ranging protocol
 // TODO replace by enum
@@ -32,8 +38,14 @@ const uint8_t devAddr = 0x01;
 #define POLL_ACK 1
 #define RANGE 2
 #define RANGE_REPORT 3
+#define PAIR 4
+#define PAIR_ACK 5
+#define PAIR_ALL 6
 #define RANGE_FAILED 255
 
+#define PAIR_LED 12
+
+extern bool isPaired;
 
 //#ifdef SAMD21
 // Different pins
@@ -44,8 +56,12 @@ const uint8_t devAddr = 0x01;
 void InitAnchor();
 
 void AnchorLoop();
+bool AnchorPairLoop();
 void AnchorReceiveHandler();
 void AnchorSentHandler();
 void AnchorPair();
 void pollResponse();
 void rangeResponse();
+void pairResponse();
+void checkSPI();
+

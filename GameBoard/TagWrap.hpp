@@ -31,17 +31,23 @@ const uint8_t PIN_SS =  SS; // spi select pin
 #define POLL_ACK 1
 #define RANGE 2
 #define RANGE_REPORT 3
+#define PAIR 4
+#define PAIR_ACK 5
+#define PAIR_ALL 6
 #define RANGE_FAILED 255
 
 #define LEN_DATA 16
 
 void TagInit();
-void TagLoop();
+int TagLoop();
 void TagTransmitPoll(uint8_t destAddr);
+void TagTransmitPair();
+void TagTransmitPairAll();
 void TagTransmitRange();
 
 void TagReceiveHandler();
 void TagSentHandler();
 
 void tagWatchdogCallback();
+
 
