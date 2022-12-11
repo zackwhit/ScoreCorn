@@ -19,6 +19,11 @@ const uint8_t PIN_SS =  7; // spi select pin
 const uint8_t PIN_RST = 9; // reset pin
 const uint8_t PIN_IRQ = 2; // irq pin
 const uint8_t PIN_SS = SS; // spi select pin
+#elif defined __AVR_ATmega2560__
+// Arduino MEGA
+const uint8_t PIN_RST = 9; // reset pin
+const uint8_t PIN_IRQ = 3; // irq pin
+const uint8_t PIN_SS = SS; // spi select pin
 #else
 // Default
 const uint8_t PIN_RST = 9; // reset pin
@@ -37,6 +42,9 @@ const uint8_t PIN_SS =  SS; // spi select pin
 #define RANGE_FAILED 255
 
 #define LEN_DATA 16
+#define SEND_TIMEOUT 10
+
+extern uint16_t curRange;
 
 void TagInit();
 int TagLoop();

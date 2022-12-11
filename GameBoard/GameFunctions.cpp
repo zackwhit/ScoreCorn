@@ -1,13 +1,19 @@
 #include "GameFunctions.hpp"
 
 
-bool all_is_still(const int32_t *new_distances, const int32_t *old_distances) {
+bool all_is_still(const int32_t *new_distances, const int32_t *old_distances, bool checkOld) {
   bool still = true;
   for (uint8_t i = 0; i < NUM_BAGS; i++) {
     if (/* if bag is thrown and bag has moved */
         new_distances[i] < THROWN_DISTANCE && abs(new_distances[i] - old_distances[i]) > NOISE_DISTANCE) {
-      still = false;
-      break;
+      if (checkOld || old_distances[i] > THROWN_DISTANCE) {
+        still = false;
+        //Serial.println(new_distances[i]);
+        //Serial.println(old_distances[i]);
+        //Serial.println(abs(new_distances[i] - old_distances[i]));
+        //if (checkOld) Serial.println("T");
+        break;
+      }
     }
   }
   return still;
@@ -26,8 +32,8 @@ uint8_t calc_bags_on_board(int32_t board_weight) {
 void print_state(const uint8_t *ids, const bag_state_t *bag_states) {
   for (int i = 0; i < NUM_BAGS; i++) {
     //printf("%d: ", ids[i]);
-    Serial.print(": ");
     Serial.print(ids[i]);
+    Serial.print(": ");
     Serial.print(" ");
     switch (bag_states[i]) {
       case UNTHROWN:

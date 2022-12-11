@@ -20,6 +20,7 @@ class MyGui(QMainWindow):
         self.throwButton.clicked.connect(self.sendThrow)
         self.resetButton.clicked.connect(self.resetMCU)
         self.printStateButton.clicked.connect(self.printState)
+        self.tareButton.clicked.connect(self.tareCells)
 
 
         self.distSlider.valueChanged.connect(self.distSliderChanged)
@@ -80,23 +81,35 @@ class MyGui(QMainWindow):
                 splitBytes = data.split(b'\n')
                 for line in splitBytes:
                     if (len(line) == 0): break
-                    #print(len(line))
                     #print(line)
                     # Remove last byte (extra line return, basically)
                     #line = line[:len(line)-2]
-                    # Add to display
-                    self.serialListModel.appendRow(
-                        QStandardItem(line.decode()))
-
 
                     # Breakup and examine data for a report
                     moreSplits = line.split(b':')
+                    if(len(moreSplits) == 0):
+                        return
                     # Check for a report
                     if (moreSplits[0] == b'R'):
                         addrIndex = int(moreSplits[1])
                         reportDist = float(moreSplits[2])
                         self.distancesListModel.setItem(addrIndex,
                             QStandardItem(F"{addrIndex}: {reportDist}m"))
+                        if (self.checkBoxR.isChecked()):
+                            self.serialListModel.appendRow(
+                                QStandardItem(line.decode()))
+                    elif (moreSplits[0].decode().find("Sum") != -1):
+                        #print(moreSplits[0].decode())
+                        weightOnBoard = float(moreSplits[1])
+                        self.lcdNumber.display(weightOnBoard)
+                        if (self.checkBoxSum.isChecked()):
+                            self.serialListModel.appendRow(
+                                QStandardItem(line.decode()))
+                    else: 
+                        # Add to display
+                        self.serialListModel.appendRow(
+                            QStandardItem(line.decode()))
+
         # Scroll to bottom
         self.listView_2.verticalScrollBar().setValue(self.listView_2.verticalScrollBar().maximum())
 
@@ -138,6 +151,9 @@ class MyGui(QMainWindow):
     
     def printState(self):
         self.arduinoConnection.write(bytes('p', 'ascii'))
+    
+    def tareCells(self):
+        self.arduinoConnection.write(bytes('t', 'ascii'))
         
 
     def __del__(self):

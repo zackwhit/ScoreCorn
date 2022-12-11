@@ -1,0 +1,283 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage[normalem]{ulem}
+\useunder{\uline}{\ul}{}
+
+\title{Scorecorn - ENGR 465 Final paper}
+\author{Zachary Whitlock, Paul Plancich, Kedrick Nelson}
+\date{October 2022}
+
+\begin{document}
+
+\captionsetup[figure]{font=footnotesize,labelfont=Small}
+
+\maketitle
+\newpage
+
+\section{Abstract}
+\section{Preface}
+\section{Acknowledgements}
+
+\tableofcontents
+
+\section{List of tables}
+\section{List of figures}
+\section{Notation \& Symbols}
+
+\section{Introduction}
+Cornhole is a lawn game in which players take turns throwing four 16-ounce fabric bean bags at a raised platform with a hole in the far end. A bag scored in the hole scores three points, each bag on the board scores one point, and a bag off of the board scores zero points. The difference between each team’s points is tallied and considered as the points won each round. Play continues until a team or player reaches or exceeds a score of 21 points. A more detailed list of the official rules can be found on the American Cornhole Association1 (ACA) website. \\
+Cornhole has been gaining in popularity, and official tournaments have even been broadcast on major networks. According to a 2021 article titled Why Hollywood Can’t Get Enough of the American Cornhole League on Fourth of July and Beyond2 people have enjoyed cornhole for years, and once celebrities started enjoying it as well, that is when ESPN decided they would broadcast the sport. ESPN airs the American Cornhole League Final Chase every Fourth of July weekend. With the game increasing in popularity, now is a great time to get into the market. \\
+An issue found in some cornhole games might be a disagreement in the score. Whether a player lost track between rounds, or even worse was bamboozled by another player, it may not be uncommon to see disagreements over the score throughout the rounds of the game. This conflict could be avoided by introducing an automated scoring system
+
+Notes for report writing:
+\begin{itemize}
+    \item What is this report about? 
+    \item How did the idea for this project originate?
+    \item What is the problem that needs to be solved? 
+    \item What needs to be accomplished to solve this problem? 
+    \item What do you intend to complete as part of this project? 
+    \item What  deliverables  will  result  from  your  work  (Prototype,  product  design,  process design, recommendations, etc.)?
+    \item How will you meet each of your objectives? 
+\end{itemize}
+
+This report is about our capstone project, a project to build a system that can automatically score and orchestrate a game of the classic American lawn game of Cornhole. The idea of this project originated as ? This project seeks to solve the problems of automatic score keeping needed for large scale tournament games, custom game modes, score disputes that make the game less fun, and making the game easier to play. To accomplish solving these problems, each game board has to be loaded with sensors in order to track the game bags as they are tossed and the score must be displayed once the game is over. Our original completion goals of this project were as already described. Our deliverables are:
+\begin{itemize}
+    \item 
+\end{itemize}
+
+How will we meet each of our objectives? (TODO) 
+
+\section{Background and Literature Review}
+The only automated scoring cornhole game that was found during our research is the subject of another senior project in their report Automatic Score Tracking Cornhole Game3, where their design utilized an RFID based system to track the tags and Bluetooth to both pair the boards and display the score. Their system utilized already owned hardware that is not called out in the bill of materials, and they only designed a single cornhole board, not two as the game is traditionally played. What is not included approximates to an additional \$250 on top of the total of \$318.15. So, if we were to recreate the game using their design methodology on two boards, the assumed cost is approximately \$1,136.30. 
+\newpage
+To improve upon the existing work of the CalTech team, and to meet our own requirements, we decided to put a high importance on cutting the cost as much as possible. Additionally, we wanted to use parts that were more widely available, since the RFID signal strength approach relied on a couple highly specific components with very few possible replacements. The bag tracking approaches we reviewed included the different types of RFID prototypes, AASK radios, optical/auditory, and TOF (Time-Of-Flight). Below is a table of the different radios we examined, with their various features and prices compared. 
+
+% from https://www.tablesgenerator.com/latex_tables
+\begin{table}[]
+\begin{tabular}{lcccccc}
+\rowcolor[HTML]{E7E6E6} 
+{\color[HTML]{44546A} Name} & {\color[HTML]{44546A} RX/TX} & {\color[HTML]{44546A} Type} & {\color[HTML]{44546A} RSSI} & {\color[HTML]{44546A} 8x Recv.} & {\color[HTML]{44546A} Prog. Pow} & {\color[HTML]{44546A} 5ft Range} \\
+{\color[HTML]{0563C1} {\ul NRF24L01}} & Both & ISM &  &  &  &  \\
+{\color[HTML]{0563C1} {\ul TEA5767}} & RX & FM & Y* & Y &  &  \\
+{\color[HTML]{0563C1} {\ul RDA5807M}} & RX & FM & Y & Y &  &  \\
+Raspi SDR & RX/TX & All* & Y & Y &  & Y \\
+\cellcolor[HTML]{FFFF00}ESP32 &  & WiFi/BT &  &  &  &  \\
+\cellcolor[HTML]{FFFF00}{\color[HTML]{0563C1} {\ul ESP8266}} &  & WiFi &  &  &  & 20dBm \\
+\cellcolor[HTML]{FFFF00}{\color[HTML]{0563C1} {\ul RFM69HCW}} & RX/TX & ISM & Y & Y & Y & 20dBm \\
+{\color[HTML]{0563C1} {\ul RF Link}} & TX & ISM &  &  &  & 32mW \\
+MX-RM-5V & RX/TX & ISM &  & Y* & Y* &  \\
+{\color[HTML]{0563C1} {\ul nRF52840}} & RX/TX & BT & Y & Y & Y & 8dBm \\
+{\color[HTML]{0563C1} {\ul RFM12B}} & RX/TX & ISM & Y & Y &  & 7dBm \\
+\cellcolor[HTML]{FFFF00}{\color[HTML]{0563C1} {\ul DWM1000}} & RX/TX & UWB & Y & Y* & Y & Y \\
+\cellcolor[HTML]{E2EFDA}{\color[HTML]{0563C1} {\ul DWM3000}} & RX/TX & UWB & Y & Y & Y & Y
+\end{tabular}
+\end{table}
+
+\begin{table}[]
+\begin{tabular}{lcccccccc}
+\rowcolor[HTML]{E7E6E6} 
+{\color[HTML]{44546A} Name} & {\color[HTML]{44546A} 5v} & {\color[HTML]{44546A} 3.3v} & {\color[HTML]{44546A} I2C} & {\color[HTML]{44546A} SPI} & {\color[HTML]{44546A} Low Pow.} & {\color[HTML]{44546A} Ant. Incl.} & {\color[HTML]{44546A} Freq} & {\color[HTML]{44546A} Amazon} \\
+{\color[HTML]{0563C1} {\ul NRF24L01}} &  &  &  &  &  &  &  & Y \\
+{\color[HTML]{0563C1} {\ul TEA5767}} & Y & Y & Y &  & 11mA & Y &  & Y \\
+{\color[HTML]{0563C1} {\ul RDA5807M}} &  & Y & Y &  & 21mA & Y &  & Y \\
+Raspi SDR & Y &  &  &  & No & Y &  &  \\
+\cellcolor[HTML]{FFFF00}ESP32 &  &  &  &  &  & Y &  &  \\
+\cellcolor[HTML]{FFFF00}{\color[HTML]{0563C1} {\ul ESP8266}} &  &  &  & Y &  & Y &  & Y \\
+\cellcolor[HTML]{FFFF00}{\color[HTML]{0563C1} {\ul RFM69HCW}} &  & Y &  & Y & 16mA* &  & 434/915 & Y \\
+{\color[HTML]{0563C1} {\ul RF Link}} & Y & Y &  &  & 8mA &  & 315/434 &  \\
+MX-RM-5V &  &  &  &  &  &  & 433 & Y \\
+{\color[HTML]{0563C1} {\ul nRF52840}} & Y & Y & Y & Y & 40mA? & Y & BLE & Y \\
+{\color[HTML]{0563C1} {\ul RFM12B}} &  & Y &  & Y & 28mA &  & 433/868/915 & X \\
+\cellcolor[HTML]{FFFF00}{\color[HTML]{0563C1} {\ul DWM1000}} &  & Y &  & Y & 140mA & Y &  & Y \\
+\cellcolor[HTML]{E2EFDA}{\color[HTML]{0563C1} {\ul DWM3000}} &  & Y &  & Y & 55mA & Y &  & X \\
+ &  &  &  &  &  &  &  & 
+\end{tabular}
+\end{table}
+\newpage
+
+\begin{table}[]
+\begin{tabular}{lcccccc}
+\rowcolor[HTML]{E7E6E6} 
+{\color[HTML]{44546A} Name} & {\color[HTML]{44546A} Aliexpress} & {\color[HTML]{44546A} Ebay} & {\color[HTML]{44546A} Adafruit} & {\color[HTML]{44546A} Sparkfun} & {\color[HTML]{44546A} Library} & {\color[HTML]{44546A} Cost} \\
+{\color[HTML]{0563C1} {\ul NRF24L01}} &  &  &  &  &  & {\color[HTML]{0563C1} {\ul \$1.40}} \\
+{\color[HTML]{0563C1} {\ul TEA5767}} &  &  &  &  & Y & {\color[HTML]{0563C1} {\ul \$10}} \\
+{\color[HTML]{0563C1} {\ul RDA5807M}} &  &  &  &  & Y & {\color[HTML]{0563C1} {\ul \$6}} \\
+Raspi SDR &  &  &  &  &  &  \\
+\cellcolor[HTML]{FFFF00}ESP32 &  &  &  &  &  & \$6.70 \\
+\cellcolor[HTML]{FFFF00}{\color[HTML]{0563C1} {\ul ESP8266}} &  &  &  &  &  & \$3.30 \\
+\cellcolor[HTML]{FFFF00}{\color[HTML]{0563C1} {\ul RFM69HCW}} &  & Y &  & Y &  & {\color[HTML]{0563C1} {\ul \$14*}} \\
+{\color[HTML]{0563C1} {\ul RF Link}} &  &  &  &  &  & {\color[HTML]{0563C1} {\ul \$5.50}} \\
+MX-RM-5V &  &  &  &  &  & \$1 \\
+{\color[HTML]{0563C1} {\ul nRF52840}} &  &  & Y &  &  & \$26 \\
+{\color[HTML]{0563C1} {\ul RFM12B}} & Y & Y &  &  & Y & {\color[HTML]{0563C1} {\ul \$20*}} \\
+\cellcolor[HTML]{FFFF00}{\color[HTML]{0563C1} {\ul DWM1000}} & Y & Y & X & Y & Y & {\color[HTML]{0563C1} {\ul \$40}} \\
+\cellcolor[HTML]{E2EFDA}{\color[HTML]{0563C1} {\ul DWM3000}} & X & X & X & X & X & {\color[HTML]{0563C1} {\ul \$20*}} \\
+ &  &  &  &  &  & 
+\end{tabular}
+\end{table}
+
+
+Note: We have a really good graphic saved in one of the spreadsheets, it looks like it's from some research paper comparing the different ranging methods. It's un-cited though, and I'm having trouble finding the original paper. Need to do that.
+
+\section{Design}
+
+\subsection{Radio overview}
+Because the time of flight (TOF) method was determined to be the best compromise between our design requirements, we are using the DW1000 radio transceiver from Qorvo. The DW1000 is the part-number for the IC itself, the other part numbers mentioned in this paper are the DWM1000 and the DWS1000. The DWM1000 is the primary form of the DW1000, it includes an antenna and an RF can shield, all of the associated helper circuitry for the DW1000 IC, and castellated edges of its for convenient use in other projects. See Figure~\ref{fig:dwm1000_photo}.
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{DWM1000-198x140.png}
+    \caption{Qorvo's product photo of the DWM1000}
+    \label{fig:dwm1000_photo}
+\end{figure}
+
+
+The DWS1000 is a larger board that comes with a DWM1000 mounted to it. Technically the DWS1000 contains two sub part numbers, the DWM1000 and its IC, the DW1000. Figure~\ref{fig:dws1000_wired} is how we used one of the DWS1000 boards, it is wired to a 3.3v $\leftrightarrow$ 5v level shifter in the image. We also briefly explored a board called DWM1001, which uses the same DW1000 transciever IC but includes an nRF52832 MCU from Nordic Semiconductor and a motion sensor. The DWM1001-DEV is the dev board for the DWM1001 and includes \textit{another} MCU for debugging and programming. It also includes a battery charger. The DWM1001-DEV would have been a very good development board except for our Arduino IDE requirements. The libraries and IDE for the DWM1001 board and debugger were not compatible with the rest of our project, which was meant to be written in Arduino C++, and so we weren't able to make it work. We did attempt to load an Arduino compatible bootloader onto the NRF52832 but that didn't work due to unknown reasons. Even if it had worked, the DW1000ng Arduino Library would have had to been majorly modified to support the new MCU. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\textwidth]{dws1000-wired1.jpeg}
+    \caption{Our DWS1000 wired underneath the game board}
+    \label{fig:dws1000_wired}
+\end{figure}
+
+
+
+\subsection{DW1000 and the Arduino}
+By far the most difficult part of this project was making the Qorvo DW1000 radios range correctly, and between multiple devices. The first challenge was to make them talk to the Arduino Uno used for testing. The Arduino Mega is very similar to the Uno in voltages and programming, and so the Uno was used for testing as it was available first. The DWS1000 boards available from Qorvo are an Arduino Shield breakout of the the DW1000s themselves.
+
+\subsubsection{The TWR protocol}
+Two-Way ranging is the process of communicating the time of arrival of radio packets between two transceivers. This is opposed to methods such as a ultrasonic or radar bounce to judge distance, and requires two devices capable of both receiving and transmitting (a transceiver). The simplest implementation of this is shown in Figure~\ref{fig:aps2013_twr1}, where the TOF can be calculated using Equation~\ref{EqToF}. In practice and due to non ideal realities like clock drift, the DW1000's make use of something referred to as Asymmetrical TWR, which is described below. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\textwidth]{twr_1.png}
+    \caption{APS2013's figure (1) of the basic idea behind the ranging protocol}
+    \label{fig:aps2013_twr1}
+\end{figure}
+
+\begin{equation}\label{EqToF}
+ToF = \frac{t_2 - t_1 - t_{reply}}{2}
+\end{equation}
+
+In order to accurately calculate the distance between two DWM1000 modules they have to keep accurate timekeeping on the picosecond scale. The process works by one device (device A) first initiating the ranging process, it does this by sending a "POLL" message to the other device (we'll call it device B). Device A records a timestamp of when it sends this poll message, see figure~\ref{fig:poll_ack}. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\textwidth]{timepollsent.png}
+    \caption{The library API call to record the timestamp the POLL packet was sent}
+    \label{fig:poll_ack}
+\end{figure}
+
+These timestamps are technically 40-bits, and internally the LSB is equivalent to 15.65 picoseconds (DW1000 User Manual, pg. 97). Once device B receives the \texttt{POLL} message sent by Device A, it immediately responds with an acknowledgement packet and records a timestamp of when it received the POLL packet by using the same \texttt{getReceiveTimestamp()} function. Once Device A has received the \texttt{POLL\_ACK}, it records this once more (\texttt{timePollAckReceived()} in Figure~\ref{fig:poll_ack}). Device A then sends the \texttt{RANGE packet} (Figure~\ref{fig:tx_range_fn}) which includes information about when the first \texttt{POLL} packet was sent, when the \texttt{POLL\_ACK} packet was received, and when the \texttt{RANGE} packet was sent. In Figure~\ref{fig:aps2013_twr_asym}, the \texttt{Resp} packet is the \texttt{POLL\_ACK} and the \texttt{Final} packet is the \texttt{RANGE} packet. 
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\textwidth]{twr_asym.png}
+    \caption{APS2013's figure (2), representing the asymmetric TWR used by DW1000 devices}
+    \label{fig:aps2013_twr_asym}
+\end{figure}
+
+Equation~\ref{Tprop} (copied from APS2013, pg. 4) is used to calculate the time it takes for a single message to propagate through free space and reach the other device. Figure~\ref{fig:calc_range} shows the Arduino code used for this calculation. The Arduino library incorporates a useful \texttt{computeRangeAsymmetric()} function that does this calculation for you. 
+
+\begin{equation}\label{Tprop}
+T_{prop} = \frac{T_{round1} \times T_{round2} - T_{reply1}\times T_{reply2}} {T_{round1} + T_{round2} + T_{reply1} + T_{reply2}}
+\end{equation}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\textwidth]{anchor_range_calc.png}
+    \caption{The Arduino code used to calculate the distance}
+    \label{fig:calc_range}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.75\textwidth]{twr_txrange.png}
+    \caption{The Arduino code used to send the RANGE/Final message from the tag}
+    \label{fig:tx_range_fn}
+\end{figure}
+
+
+In the DW1000 nomenclature, Device A is called a 'Tag' and Device B is called an 'Anchor'. This terminology makes sense when the initiating device (the Tag) is mounted on a moving object in order to track its position. In our project however, the initiating device needed to be under control of the game loop and so had to be stationary and attached to the game board. That means that the Tag in our case is the reference point for our measurements, and the Anchors are the devices inside the cornbags. 
+
+\subsubsection{The DW1000ng Library}
+
+\section{Tag}
+
+\section{Anchors}
+
+\subsection{Game Board Design}
+
+Design constraints:
+- Yes custom PCBs
+- \$150 max additional cost per board
+- Mounts to off-the-shelf board 
+- Conforms to the cornhole board requirements within reason
+- Wireless communication between boards
+
+\subsubsection{Physical Design}
+It was important to try and keep the boards within game regulation specifications if possible. In accordance with that goal, we opted to avoid as much modification of the board itself as possible. Instead the design goal was to mount each additional component to the existing board. Because of this approach, it's likely that other boards than the one we used could be retrofit to include such a scoring system as our own.
+\subsubsection{Logic Design}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{Board Program Logic.drawio.png}
+    \caption{Example of one of our figures}
+    \label{fig:my_label}
+\end{figure}
+
+\subsection{Corn Bag Design}
+- 6oz max bean bag circuitry weight
+- 2hr minimum run time
+- No analog circuitry
+- Yes custom PCB possible
+- Other SDKs OK, prefer Arduino
+- \$40 hard limit per bag
+
+\subsubsection{Physical Design}
+\subsubsection{Logic Design}
+\subsection{Game Scoreboard Design}
+\subsection{DWM1000 Based Ranging Design}
+\subsection{Cost}
+\section{Methodology}
+In order to test the design, both hardware and software items needed to be created. For the hardware, it was decided that one game board and four game bags needed to be created first. This involved mounting the load cells, the HX711 amplifier modules, the IR beam sensor, the microcontroller module, and the DW1000 tag onto the cornhole board. For the load cells, housings were 3D printed. This made it easy to mount the load cells at an angle so that they were parallel with the board itself. Mounting the cells in this manner allowed for more accurate weight readings. The game bags which came with the cornhole set also had to be modified. The first step was to replace the sand in the bag with dried corn. Three pieces of hardware reside in the bag: The DW1000 transceiver, the Seeeduino XIAO microcontroller, and the LiPo battery. Knowing that there was circuitry in the bag, sand could potentially cause unwanted short circuits or other unforseen damage. This was the reason for the switch to a less granular material like dried corn. Later in development, the bag design changed so that the circuitry now resides within an inner bag inside the game bag.  
+
+As far as the software needed for testing methods, a Python-based GUI was also made. This was used so that one team member could virtually test the game while another team member was using the actual hardware. The GUI has a variety of features to be able to simulate the game. First, it has a window which reports the serial monitor stream coming from the Arduino sketch. It has another window showing the status of each powered-on anchor in the area. Within the GUI, the user can select "connect" or "disconnect" for each anchor. This allows the user to select which bags will be used in the game. Next, there is a window showing the distance between each active anchor and the main tag. The GUI also has an option to simulate one of three options: "break line sensor" , "add weight to board" or "neither". This allows for the testing of the main game loop in the sketch. Other functionality in the GUI includes an option to reset the serial stream and an option to "print the state" of the connected anchors. Next, there is a slider bar for distance in millimeters and a corresponding dropdown window to simulate. Finally, not only was the GUI used as a testing method, it is also used to show the game results in real time. 
+\\ \\
+\begin{figure}
+    \centering
+    \includegraphics[width=1\textwidth]{GUI_BagOnBoard.png}
+    \caption{Screenshot of Python GUI Displaying the Result of a Bag Toss}
+    \label{fig:my_label}
+\end{figure}
+The figure ~\ref{fig:GUI_BagOnBoard} shows the result of a bag toss landing on the board.
+
+Problems encountered during testing included tuning of the timing variables and tuning of weights. In preliminary testing, it was found that the distance measurement of each bag was reporting much more quickly than the reading of the load cells. Therefore, even though the bag was indeed landing on the board, the game was reporting that the bag was "off the board". This is because the load cell readings had not yet been reported. At this point, the code needed to be tuned. The sampling rate of the load cells can be adjusted and there is a simple tradeoff: The longer time allowed for the weight reading, the more accurate the weight reading will be. However, because four load cells are used in the design, it was okay for the readings to be slightly less accurate so that the reading could happen quicker. The final design used a combination of speeding up the weight reading while also slowing down the distance reporting.
+
+\section{Results}
+
+ 
+\section{Conclusion}
+\section{Recommendations}
+\section{References / Bibliography}
+
+\hspace{10pt} “Cornhole Rules | Official Cornhole Rules and Gameplay,” American Cornhole Association. https://www.playcornhole.org/pages/rules \\
+
+“Why Hollywood Can’t Get Enough of the American Cornhole League on Fourth of July and Beyond,” E! Online, Jul. 03, 2021. https://www.eonline.com/news/1284296/why-hollywood-cant-get-enough-of-the-american-cornhole-league-on-fourth-of-july-and-beyond (accessed May 24, 2022). \\
+
+H. Overturf, M. Behroozian, D. Hurwitz, and S. Project, “Automatic Score Tracking Cornhole Game Written By.” Accessed: May 22, 2022. [Online]. Available: https://digitalcommons.calpoly.edu/cgi/viewcontent.cgi?article=1521\&context=eesp \\
+
+“Getting Back to Basics with Ultra-Wideband (UWB).” Accessed: May 22, 2022. [Online]. Available: https://www.qorvo.com/resources/d/qorvo-getting-back-to-basics-with-ultra-wideband-uwb-white-paper \\
+
+M. -H. Lin, M. A. Sarwar, Y. -A. Daraghmi and T. -U. İk, "On-Shelf Load Cell Calibration for Positioning and Weighing Assisted by Activity Detection: Smart Store Scenario," in IEEE Sensors Journal, vol. 22, no. 4, pp. 3455-3463, 15 Feb.15, 2022, doi: 10.1109/JSEN.2022.3140356 
+
+https://arxiv-export1.library.cornell.edu/pdf/1709.01015
+
+Implementation of Two-Way Ranging with the DW1000 (Application Note APS013)
+
+\end{document}
+

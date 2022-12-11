@@ -1,6 +1,6 @@
 #include "DW1000Ng.hpp"
 #include "TagWrap.hpp"
-
+#include <SPI.h>
 
 // Task scheduler variables
 StatusRequest sr;
@@ -22,6 +22,7 @@ uint8_t nextExpectedMsg;
 uint16_t replyDelayTimeUS = 3000;
 
 bool tagInitialized = false;
+uint16_t curRange = 0;
 
 // Volatile variables
 byte data[LEN_DATA];
@@ -35,8 +36,8 @@ device_configuration_t DEFAULT_CONFIG = {
     false,
     SFDMode::STANDARD_SFD,
     Channel::CHANNEL_5,
-    //DataRate::RATE_850KBPS,
-    DataRate::RATE_6800KBPS,
+    DataRate::RATE_850KBPS,
+    //DataRate::RATE_6800KBPS,
     PulseFrequency::FREQ_16MHZ,
     PreambleLength::LEN_256,
     PreambleCode::CODE_3
@@ -66,13 +67,13 @@ void TagInit() {
 
   // Check SPI communication
   // get device ID register and check it matches expected value
-  //if (DW::checkDeviceId()){
-  //  Serial.println("SPI seems to work");
-  //  tagInitialized = true;
-  //} else {
-  //  Serial.println("SPI error - unable to talk to DW1000");
-  //  tagInitialized = false;
-  //}
+  if (DW::checkDeviceId()){
+    Serial.println("SPI seems to work");
+    tagInitialized = true;
+  } else {
+    Serial.println("SPI error - unable to talk to DW1000");
+    tagInitialized = false;
+  }
 
   tagWatchdog = new Task(&tagWatchdogCallback, &ts);
 
@@ -101,6 +102,7 @@ int TagLoop(){
     receivedMsg = false;
     DW::getReceivedData(data, LEN_DATA);
     byte msgId = data[0];
+    uint8_t devAddr = data[5];
 
     // Handle POLL_ACK - send range
     if (nextExpectedMsg == msgId) {
@@ -111,20 +113,19 @@ int TagLoop(){
         TagTransmitRange();
       } else if (msgId == RANGE_REPORT) {
         Serial.print("R:");
-        uint8_t devAddr = data[5];
         Serial.print(devAddr);
         Serial.print(":");
-        uint16_t curRange = 0;
         memcpy(&curRange, data + 1, 2);
         double printableRange = (double)(curRange/1000.0);
         Serial.print(printableRange); Serial.println(":");
         nextExpectedMsg = 10; // undefined msg id
         sr.signalComplete();
+        return devAddr+100;
       } else if (msgId == PAIR_ACK) {
         Serial.println("Got pair ACK");
         sr.signalComplete();
         DW::startReceive();
-        return data[5]+1;
+        return devAddr+1;
       } else {
         Serial.println("Unexpected expected error?");
       }
@@ -192,14 +193,13 @@ void TagTransmitPoll(uint8_t destAddr) {
   // Final message will mark as complete
   //    - signalComplete()
   sr.setWaiting();
-  sr.setTimeout(6);
+  sr.setTimeout(SEND_TIMEOUT);
   tagWatchdog->waitFor(&sr);
 }
 
 void TagTransmitRange() {
   nextExpectedMsg = RANGE_REPORT;
   sr.resetTimeout();
-  //Serial.println("Sending range message");
 
   data[0] = RANGE;
 
@@ -217,8 +217,6 @@ void TagTransmitRange() {
   DW1000NgUtils::writeValueToBytes(data + 11, timeRangeSent, LENGTH_TIMESTAMP);
   DW::setTransmitData(data, LEN_DATA);
   DW::startTransmit(TransmitMode::DELAYED);
-  //Serial.print("Expect RANGE to be sent @ "); Serial.println(timeRangeSent.getAsFloat());
-
 }
 
 void TagReceiveHandler(){

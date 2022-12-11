@@ -13,7 +13,7 @@
 #ifdef SEEED_XIAO_M0
 // Seeduino XIAO
 const uint8_t PIN_RST = 2; // reset pin
-const uint8_t PIN_IRQ = 3; // irq pin
+const uint8_t PIN_IRQ = 3; // iq pin
 const uint8_t PIN_SS =  7; // spi select pin
 #elif defined ARDUINO_AVR_UNO
 // Uno/Nano
@@ -28,7 +28,7 @@ const uint8_t PIN_SS =  SS; // spi select pin
 #endif
 
 
-const uint8_t devAddr = 0x01;
+const uint8_t devAddr = 0x02;
 const uint16_t devPairDelay = 100*devAddr+50; //ms to wait before replying to PAIR
 const uint16_t deviceRetryTimeout = 500;
 
@@ -44,6 +44,7 @@ const uint16_t deviceRetryTimeout = 500;
 #define RANGE_FAILED 255
 
 #define PAIR_LED 12
+#define SEND_TIMEOUT 10
 
 extern bool isPaired;
 

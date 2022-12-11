@@ -6,16 +6,17 @@
 #include <Arduino.h>
 
 /* number of bags in the cornhole game */
-#define NUM_BAGS 4
+#define NUM_BAGS 5
 
 /* bags which move less than this distance probably didn't actually move */
-#define NOISE_DISTANCE 10 
+#define NOISE_DISTANCE 150
+#define NOISE_WEIGHT 30
 
 /* bags closer than this distance have been thrown */
-#define THROWN_DISTANCE 5000
+#define THROWN_DISTANCE 2000
 
 /* the weight of one bag */
-#define BAG_WEIGHT 300
+#define BAG_WEIGHT 250
 
 typedef enum {
     UNTHROWN,
@@ -24,6 +25,7 @@ typedef enum {
     IN_HOLE,
 } bag_state_t;
 
-bool all_is_still(const int32_t *new_distances, const int32_t *old_distances);
+//bool all_is_still(const int32_t *new_distances, const int32_t *old_distances);
 uint8_t calc_bags_on_board(int32_t board_weight);
 void print_state(const uint8_t *ids, const bag_state_t *bag_states);
+bool all_is_still(const int32_t *new_distances, const int32_t *old_distances, bool checkOld);

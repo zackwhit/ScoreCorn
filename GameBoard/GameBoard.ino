@@ -4,19 +4,21 @@
 
 #include "TagWrap.hpp"
 #include "GameFunctions.hpp"
+#include "readCells.h"
 
-#define EXPECTED_ANCHORS 1
+#define EXPECTED_ANCHORS 2
 #define PAIR_TIMEOUT 500
 #define VIRT_TOSS_PERIOD 30
 #define VIRT_TOSS_STEPS 50
 
-void(* resetFunc) (void) = 0;
+void (*resetFunc)(void) = 0;
 
 Scheduler ts;
 void simulateThrow(uint32_t endDist, uint8_t bagIndex);
 void poll_1_Callback1();
 void poll_2_Callback1();
 void poll_3_Callback1();
+void poll_4_Callback1();
 void pair_Callback();
 void gameLoop_CallBack();
 void game_loop(
@@ -30,21 +32,25 @@ void simToss_Callback();
 Task poll1(100, TASK_ONCE, &poll_1_Callback1, &ts, false);
 Task poll2(100, TASK_ONCE, &poll_2_Callback1, &ts, false);
 Task poll3(100, TASK_ONCE, &poll_3_Callback1, &ts, false);
+Task poll4(100, TASK_ONCE, &poll_4_Callback1, &ts, false);
 
 // Task for pairing with anchors
 Task pairTask(2500, TASK_FOREVER, &pair_Callback, &ts, false);
 // Task for the game loop
-Task gameLoop(500, TASK_FOREVER, &gameLoop_CallBack, &ts, false);
+Task gameLoop(1000, TASK_FOREVER, &gameLoop_CallBack, &ts, false);
 
 Task simToss(VIRT_TOSS_PERIOD, TASK_ONCE, &simToss_Callback, &ts, false);
 
+Task tickLoadcells(10, TASK_FOREVER, &tickCells_Callback, &ts, true);
+
+
 /*
 TODO: 
-- Finish Pairing code on both anchor and tag devices
+- [Done] Finish Pairing code on both anchor and tag devices
 
 Game loop requires:
-- Distance
-- uint8_t Bag ids
+- Distance [Done]
+- uint8_t Bag ids [Done?]
 - uint32_t board weight
 */
 
@@ -76,11 +82,15 @@ void setup() {
   // Start up the DW1000 & tag code
   TagInit();
 
+  // Setup the loadcells
+  setupCells();
+
+  // Line-break sensor
+  pinMode(2, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(2), setLinebreak, RISING);
+
   // Run task scheduler (ts)
   ts.startNow();
-
-  // Start pairing
-  pairTask.enable();
 
   // Seed the random number generator
   randomSeed(analogRead(0));
@@ -91,6 +101,9 @@ void setup() {
     bag_states[i] = UNTHROWN;
     new_distances[i] = 8000;
   }
+
+  // Start pairing
+  pairTask.enable();
 }
 
 void loop() {
@@ -107,11 +120,8 @@ void loop() {
   if (Serial.available() > 0) {
     char inByte = Serial.read();
     if (inByte == 't') {
-      //TopRight.tareNoDelay();
-      //BottomRight.tareNoDelay();
-      //TopLeft.tareNoDelay();
-      //BottomLeft.tareNoDelay();
       Serial.println(F("Taring loadcells..."));
+      tareCells();
     } else if (inByte == 'w') {
       char serBuf[6];
       Serial.readBytes(serBuf, 6);
@@ -124,19 +134,27 @@ void loop() {
       }
 
       char serBuf[5];
-      Serial.readBytes(serBuf, 4); // 'XXXX'
+      Serial.readBytes(serBuf, 4);  // 'XXXX'
       uint32_t distConverted = atoi(serBuf);
       inByte = Serial.read();
-      if (inByte != 'i') { // 'i'
+      if (inByte != 'i') {  // 'i'
         Serial.print(F("bad ser data, "));
         Serial.println(inByte, DEC);
       }
       char serBuf2[3];
-      if (Serial.readBytes(serBuf2, 2) != 2) // 'XX'
+      if (Serial.readBytes(serBuf2, 2) != 2)  // 'XX'
         Serial.println(F("outta ser data"));
       uint8_t idConverted = atoi(serBuf2);
-      Serial.print(F("Read ")); Serial.print(distConverted);
-      Serial.print(", "); Serial.println(idConverted);
+      // find the id in the id array
+      for (int i = 0; i < NUM_BAGS; i++) {
+        if (bag_ids[i] == idConverted) {
+          idConverted = i;
+        }
+      }
+      Serial.print(F("Read "));
+      Serial.print(distConverted);
+      Serial.print(", ");
+      Serial.println(idConverted);
       throwFlags = 0;
 
       if (Serial.read() == 'y') {  // on-board
@@ -146,26 +164,36 @@ void loop() {
       if (Serial.read() == 'y') {  // thru-hole
         throwFlags |= 0x2;
       }
-      Serial.println(throwFlags, HEX);
+      //Serial.println(throwFlags, HEX);
 
       simulateThrow(distConverted, idConverted);
 
     } else if (inByte == 'p') {
       print_state(bag_ids, bag_states);
-    } else if (inByte == 'r') { // reset arduino
+    } else if (inByte == 'r') {  // reset arduino
       resetFunc();
-    } else if (inByte == 'r') { // reset game
+    } else if (inByte == 'r') {  // reset game
       // ?
     }
   }
 
   if (doTagLoop) {
-    int result = TagLoop();
-    if (result > 0) {  // We got a sucessful pair
-      pairedAnchors++;
+    int result = TagLoop();  // TODO return enum or something more obvious
+    if (result >= 100) {     // Successful range
+      uint8_t idToIndex = result-100;
+      // find the id in the id array
+      for (int i = 0; i < NUM_BAGS; i++) {
+        if (bag_ids[i] == idToIndex) {
+          idToIndex = i;
+        }
+      }
+      new_distances[idToIndex] = curRange;
+      //Serial.println(curRange);
+    } else if (result > 0) {  // Sucessful pair
       Serial.print(F("Paried with anchor: "));
-      Serial.println(result-1);
-      bag_ids[pairedAnchors-1] = result-1;
+      Serial.println(result - 1);
+      bag_ids[pairedAnchors] = result - 1;
+      pairedAnchors++;
     }
   }
 
@@ -183,13 +211,20 @@ void poll_2_Callback1() {
   //Serial.println(F("Ranging anchor 2..."));
   TagTransmitPoll(bag_ids[1]);
   poll2.disable();
-  poll3.restartDelayed();
+  poll1.restartDelayed();
 }
 
 void poll_3_Callback1() {
   //Serial.println(F("Ranging anchor 3..."));
   TagTransmitPoll(bag_ids[2]);
   poll3.disable();
+  poll1.restartDelayed();
+}
+
+void poll_4_Callback1() {
+  //Serial.println(F("Ranging anchor 3..."));
+  TagTransmitPoll(bag_ids[3]);
+  poll4.disable();
   poll1.restartDelayed();
 }
 
@@ -203,14 +238,14 @@ void pair_Callback() {
   }
   Serial.println(F("Attempting to pair"));
 
-  if (pairTimeoutCount == 0) {
+  if (pairedAnchors == 0) {
     TagTransmitPairAll();
   } else {
     TagTransmitPair();
   }
-  
 
-  pairTimeoutCount++;  // Replace with a real timeout?
+
+  pairTimeoutCount++;  // Replace with a real timeout? TODO
   if (pairTimeoutCount >= PAIR_TIMEOUT) {
     Serial.print(F("Pairing timeout, only found "));
     Serial.print(pairedAnchors);
@@ -225,7 +260,7 @@ void gameLoop_CallBack() {
   // Figure out if we want to call the game_loop function itself (and feed it its parameters!)
   // [Don't do this until we're paired and set up...]
 
-  game_loop(bag_ids, new_distances, bag_states, board_weight, line_break_is_tripped);
+  game_loop(bag_ids, new_distances, bag_states, cellSummation + board_weight, line_break_is_tripped);
 }
 
 /* Simulating a throw
@@ -246,11 +281,16 @@ void simulateThrow(uint32_t endDist, uint8_t bagIndex) {
   // The highest indice represents the last step (when the bag has arrived)
   // Calculate the step size
   uint16_t stepSize = (8000 - endDist) / VIRT_TOSS_STEPS;
+  int32_t past_weight = board_weight;
+
   for (uint16_t i = 0; i < VIRT_TOSS_STEPS; i++) {
     tossDistSteps[i] = 8000 - i * stepSize;
     // Add some random variation too
     tossDistSteps[i] += random(-50, 50);
+    // And some random variation to the weight in order too
+    board_weight += random(-100, 100);
   }
+  board_weight = past_weight;
 
   tossDistSteps[VIRT_TOSS_STEPS - 1] = endDist;
   selectedIndex = bagIndex;
@@ -263,10 +303,6 @@ void simulateThrow(uint32_t endDist, uint8_t bagIndex) {
 
 void simToss_Callback() {
   new_distances[selectedIndex] = tossDistSteps[currentStep];
-  //erial.print(F("Fired simToss on step "));
-  //Serial.print(currentStep);
-  //Serial.print(F(", dist "));
-  //Serial.println(tossDistSteps[currentStep]);
   currentStep++;
   if (currentStep >= VIRT_TOSS_STEPS) {
     currentStep = 0;
@@ -303,13 +339,12 @@ void game_loop(
      *     states.
      */
 
-  
+
   static int32_t last_distances[NUM_BAGS];
   static int32_t old_distances[NUM_BAGS];
+  static int32_t old_weight;
   static uint8_t num_bags_through_hole = 0;
 
-  // Testing print
-  //Serial.println(F("Game loop ran"));
 
   /* make all the bags start as far away as possible */
   static bool first_call = true;
@@ -321,9 +356,32 @@ void game_loop(
     }
   }
 
-  //if (line_break_is_tripped) line_break_was_tripped = true;
 
-  if (!all_is_still(new_distances, last_distances)) {
+  // Don't run if the distances aren't stable
+  if (!all_is_still(new_distances, last_distances, false)) {
+    /* clean up and return */
+    old_weight = board_weight;
+    for (uint8_t i = 0; i < NUM_BAGS; i++) {
+      last_distances[i] = new_distances[i];
+    }
+    return;
+  }
+
+  // Don't run if the weight isn't stable
+  if (abs(old_weight - board_weight) > NOISE_WEIGHT) {
+    /* clean up and return */
+    old_weight = board_weight;
+    for (uint8_t i = 0; i < NUM_BAGS; i++) {
+      last_distances[i] = new_distances[i];
+    }
+    //Serial.println("Weight wasn't still");
+    return;
+  }
+
+  old_weight = board_weight;
+
+  // Abort run if we are still at the same distance as our last run
+  if (all_is_still(new_distances, old_distances, true)) {
     /* clean up and return */
     for (uint8_t i = 0; i < NUM_BAGS; i++) {
       last_distances[i] = new_distances[i];
@@ -331,15 +389,7 @@ void game_loop(
     return;
   }
 
-  if (all_is_still(new_distances, old_distances)) {
-    /* clean up and return */
-    for (uint8_t i = 0; i < NUM_BAGS; i++) {
-      last_distances[i] = new_distances[i];
-    }
-    return;
-  }
-
-  Serial.println("All was not still, re-calculating");
+  Serial.println("All was still, re-calculating");
 
   /* count bags */
   uint8_t num_bags_on_board = calc_bags_on_board(board_weight);
@@ -375,21 +425,21 @@ void game_loop(
   for (uint8_t i = 0; i < num_bags_through_hole; i++) {
     uint8_t state_ndx = ndx_ordered_by_distance_asc[i];
     bag_states[state_ndx] = IN_HOLE;
-    Serial.println(F("New bag through hole"));
+    Serial.println(F("Set bag through hole"));
   }
 
   // next furthest bags are on the board
   for (uint8_t i = num_bags_through_hole; i < num_bags_through_hole + num_bags_on_board; i++) {
     uint8_t state_ndx = ndx_ordered_by_distance_asc[i];
     bag_states[state_ndx] = ON_BOARD;
-    Serial.println(F("New bag on board"));
+    Serial.println(F("Set bag on board"));
   }
 
   // next furthest bags are off board
   for (uint8_t i = num_bags_through_hole + num_bags_on_board; i < num_bags_thrown; i++) {
     uint8_t state_ndx = ndx_ordered_by_distance_asc[i];
     bag_states[state_ndx] = OFF_BOARD;
-    Serial.println(F("New bag off board"));
+    Serial.println(F("Set bag off board"));
   }
 
   // remaining bags are still unthrown
@@ -404,4 +454,9 @@ void game_loop(
     last_distances[i] = new_distances[i];
     old_distances[i] = new_distances[i];
   }
+}
+
+void setLinebreak() {
+  line_break_was_tripped = true;
+  Serial.println(F("Linebreak"));
 }

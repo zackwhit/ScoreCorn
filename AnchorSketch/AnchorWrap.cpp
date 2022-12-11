@@ -35,8 +35,8 @@ device_configuration_t DEFAULT_CONFIG = {
   false,
   SFDMode::STANDARD_SFD,
   Channel::CHANNEL_5,
-  //DataRate::RATE_850KBPS,
-  DataRate::RATE_6800KBPS,
+  DataRate::RATE_850KBPS,
+  //DataRate::RATE_6800KBPS,
   PulseFrequency::FREQ_16MHZ,
   PreambleLength::LEN_256,
   PreambleCode::CODE_3
@@ -97,14 +97,13 @@ void AnchorLoop() {
       // Try to re-init anchor in order to fix it.
       InitAnchor();
       sr.setWaiting();
-      sr.setTimeout(100); // TODO: Make a retry-interval variable
+      sr.setTimeout(100);  // TODO: Make a retry-interval variable
       anchorWatchdog->waitFor(&sr);
     } else {
       nextExpectedMsg = 10;
     }
     DW::forceTRxOff();
     DW::startReceive();
-    
   }
 
   // anchor needs to pair with a tag
@@ -125,14 +124,12 @@ void AnchorLoop() {
     DW::getReceivedData(data, LEN_DATA);
     byte msgId = data[0];
     if (msgId == POLL && data[5] == devAddr) {
-      if (DS) Serial.println("Received POLL message");
       pollResponse();
-      sr.signalComplete(); 
+      if (DS) Serial.println("Received POLL message");
     } else if (msgId == RANGE && nextExpectedMsg == RANGE) {
-      if (DS) Serial.println("Received RANGE message.");
       rangeResponse();
-      sr.signalComplete(); 
-    } else if (msgId == PAIR_ALL) { // Restart pairing?
+      if (DS) Serial.println("Received RANGE message.");
+    } else if (msgId == PAIR_ALL) {  // Restart pairing?
       isPaired = false;
       if (DS) Serial.println("Got restart pair request, pairing...");
       DW::forceTRxOff();
@@ -178,16 +175,19 @@ bool AnchorPairLoop() {
 }
 
 void AnchorReceiveHandler() {
-  // Distguinish between packet types
-  // This should work with the TwoWayRangingInitiator example!
   receivedMsg = true;
 }
 
 void AnchorSentHandler() {
   if (data[0] == POLL_ACK) {
     timePollAckSent = DW::getTransmitTimestamp();
-  } 
+  }
 
+  DW::forceTRxOff();
+  DW::startReceive();
+
+  // This should fix errors causes by a bad connection or a
+  // stalled DW1000.
   // Start a "deeper" reset timer if this is a range report
   // E,g. we expect another poll request eventually
   if (nextExpectedMsg == POLL) {
@@ -195,12 +195,6 @@ void AnchorSentHandler() {
     sr.setTimeout(deviceRetryTimeout);
     anchorWatchdog->waitFor(&sr);
   }
-  // This should fix errors causes by a bad connection or a
-  // stalled DW1000.
-
-
-  DW::forceTRxOff();
-  DW::startReceive();
   if (DS) Serial.println("Done transmitting");
 }
 
@@ -218,17 +212,19 @@ void pollResponse() {
   timePollReceived = DW::getReceiveTimestamp();  // retrieve 64 bit timestamp
   nextExpectedMsg = RANGE;
   data[0] = POLL_ACK;
+  data[5] = devAddr;
   DW::setTransmitData(data, LEN_DATA);
   DW::startTransmit();
   if (DS) Serial.println("Sent POLL ack");
 
   sr.setWaiting();
-  sr.setTimeout(7);
+  sr.setTimeout(SEND_TIMEOUT);
   anchorWatchdog->waitFor(&sr);
 }
 
 // Handles the response to a RANGE message from the tag
 void rangeResponse() {
+  sr.resetTimeout();
   timeRangeReceived = DW::getReceiveTimestamp();
   nextExpectedMsg = POLL;
 
@@ -246,8 +242,8 @@ void rangeResponse() {
   distance = DW1000NgRanging::correctRange(distance);
   uint16_t dist2 = distance * 1000.0;
   if (dist2 > 10000) {
-    dist2 = 1234;
-    distance = 1234;
+    dist2 = 0;
+    distance = 0;
   }
 
   String rangeString = "Range: ";
@@ -267,9 +263,6 @@ void rangeResponse() {
   DW1000Ng::setTransmitData(data, LEN_DATA);
   DW1000Ng::startTransmit();
 
-  sr.setWaiting();
-  sr.setTimeout(7);
-  anchorWatchdog->waitFor(&sr);
   digitalWrite(PAIR_LED, HIGH);
 }
 
